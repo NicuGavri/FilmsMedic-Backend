@@ -1,5 +1,7 @@
 const BadRequestError = require("../errors/badRequestError");
 const User = require("../models/user");
+const EmailToken = require("../models/emailToken");
+const nodemailer = require("nodemailer")
 
 exports.create = async (req, res) => {
 
@@ -18,7 +20,37 @@ exports.create = async (req, res) => {
 
   try {
     await newUser.save();
-    res.status(201).json({ user: newUser });
+
+    //generate otp
+    //store otp in database
+    //send otp to user
+    let OTP = ''
+    for(let i = 0; i <= 5; i++) {
+     OTP += Math.floor(Math.random() * 9)
+    }
+
+    const newEmailToken = new EmailToken({owner: newUser._id, token: OTP})
+     await newEmailToken.save()
+     console.log(process.env.MAIL_USER)
+
+    var transport = nodemailer.createTransport({
+      host: "smtp.mailtrap.io",
+      port: 2525,
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASSWORD
+      }
+    });
+
+    transport.sendMail({
+      from: 'Verification@ourapp.com',
+      to: newUser.email,
+      subject: "Email Verification",
+      html: `
+      <p>Your verification OTP ${OTP}</p>`
+    })
+
+    res.status(201).json("Please verify your email. An 6 digit code was sent to your email account.");
   } catch (error) {
     res.status(401).json(error);
   }
